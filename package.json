@@ -1,0 +1,18 @@
+{
+  "name": "yash",
+  "version": "1.0.0",
+  "description": "Send sms",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "yash",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "dotenv": "^9.0.2",
+    "express": "^4.17.1",
+    "fast-two-sms": "^3.0.0",
+    "twilio": "^3.62.0"
+  }
+}
