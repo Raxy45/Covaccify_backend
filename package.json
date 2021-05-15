@@ -10,10 +10,12 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.21.1",
+    "body-parser": "^1.19.0",
     "dotenv": "^9.0.2",
     "express": "^4.17.1",
     "fast-two-sms": "^3.0.0",
     "mongoose": "^5.12.8",
+    "nodemailer": "^6.6.0",
     "twilio": "^3.62.0"
   }
 }

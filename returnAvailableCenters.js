@@ -1,7 +1,6 @@
-var metaData = [];
-var metaDataOP = [];
-
-function returnAvailableCentersArray(minimumAge, centers) {
+function returnAvailableCentersArray(user, centers) {
+  var metaData = [];
+  var metaDataOP = [];
   centers.forEach((center) => {
     var intermediate = {
       centerName: center.name,
@@ -11,7 +10,7 @@ function returnAvailableCentersArray(minimumAge, centers) {
     };
     center.sessions.forEach((session, currentSessionIndex) => {
       if (
-        session.min_age_limit == minimumAge &&
+        session.min_age_limit == user.minimumAge &&
         session.available_capacity > 0
       ) {
         var sessionInCenter = {
@@ -28,6 +27,7 @@ function returnAvailableCentersArray(minimumAge, centers) {
     metaData.push(intermediate);
   });
   metaDataOP = dataRedundancySolver(metaData);
+  // console.log(user.pincode, metaDataOP.length);
   return metaDataOP;
 }
 

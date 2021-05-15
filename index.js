@@ -3,84 +3,83 @@ const app = express();
 var rawCenters = require(__dirname + "/getCentersFromAPI.js");
 var notifications = require(__dirname + "/sendNotifications.js");
 var returnAvailableCenters = require(__dirname + "/returnAvailableCenters.js");
+const bodyParser = require("body-parser");
+
+app.use(bodyParser.urlencoded({ extended: true }));
 
 const dataUsers = require("./dataUsers.js");
-const centers = require("./API.js");
 const axios = require("axios");
 
-app.get("/", (req, res) => {
-  // console.log("Hello");
+app.post("/addUser", (req, res) => {
+  let temporaryUser = new dataUsers({
+    name: req.body.name,
+    number: req.body.number,
+    email: req.body.email,
+    minimumAge: req.body.minimumAge,
+    pincode: req.body.pincode,
+    notificationsCount: 0,
+  });
+  temporaryUser.save(function (err, doc) {
+    if (err) {
+      return console.error(err);
+    }
+    console.log("User is added to Database successfully");
+  });
+});
+app.post("/unsubscribeUser", (req, res) => {
+  dataUsers.findOne({ number: req.body.number }, (err, user) => {
+    // console.log(user);
+    notifications.sendEmailUnsubcribe(user).then(() => {
+      dataUsers.deleteMany({ number: req.body.number }, (err) => {
+        if (err) {
+          console.log(err);
+        } else {
+          console.log("Deleted the user successfully");
+        }
+      });
+    });
+  });
+});
+app.listen(3000, () => {
+  console.log("Started");
+  // OP();
+});
+
+function traceAvailableCentersEvery10Minutes() {
   dataUsers.find((err, users) => {
     if (err) {
       console.log(err);
     } else {
       users.forEach((user) => {
-        // var rawCentersArray = rawCenters(user.pincode);
-        var rawCentersArray = centers;
-        var availableCenters = returnAvailableCenters(
-          user.minimumAge,
-          rawCentersArray
-        );
-        if (availableCenters.length > 0) {
-          // console.log(createMessage(availableCenters));
-          // console.log(availableCenters);
-          res.send(availableCenters);
-          notifications.sendSMS(user, availableCenters);
-          // notifications.sendWhatsappMessage(user, availableCenters);
-        }
+        var rawCentersArray = [];
+        var availableCenters = [];
+        rawCenters(user.pincode).then((data) => {
+          if (rawCentersArray.length == 0 && availableCenters.length == 0) {
+            rawCentersArray = data;
+            availableCenters = returnAvailableCenters(user, rawCentersArray);
+            rawCentersArray.length = 0;
+            if (availableCenters.length > 0) {
+              notifications.sendEmail(user, availableCenters).then(() => {
+                dataUsers.updateOne(
+                  { _id: user._id },
+                  { notificationsCount: user.notificationsCount + 1 },
+                  (err) => {
+                    if (err) {
+                      console.log(err);
+                    } else {
+                      console.log(
+                        "Notification sent successfully to user and updated count in Database as well"
+                      );
+                    }
+                  }
+                );
+              });
+              availableCenters.length = 0;
+            }
+          }
+        });
       });
     }
   });
-  // axios
-  //   .get(
-  //     `https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin?pincode=110001&date=12-05-2021`
-  //   )
-  //   .then((data) => {
-  //     rawCenters = data.data;
-  //     res.send(rawCenters);
-  //   })
-  //   .catch((err) => {
-  //     console.log(JSON.stringify(err));
-  //   });
-});
-// function createMessage(xD) {
-//   var str = "";
-//   xD.forEach((center, index) => {
-//     str += `Center number ${index + 1} is Hospital ${
-//       center.centerName
-//     } located at ${center.centerAddress} and has vaccine available at dates:`;
-//     center.sessionsInCenter.forEach((session) => {
-//       str += `${session.sessionDate}(Available Capacity:${session.sessionAvailableCapacity} amd vaccine name is ${session.sessionVaccine}), `;
-//     });
-//     str += " . ";
-//   });
-//   return str;
-// }
-
-app.listen(3000, () => {
-  console.log("Started");
-  // dataUsers.forEach((user) => {
-  //   var OP = returnAvailableCenters(user.minimumAge, user.pincode, centers);
-  //   res.send(OP);
-  // });
-});
-
-// function traceAvailableCapacityForUsers() {
-//   dataUsers.forEach((user) => {
-//     var centers = rawCenters(user.pincode);
-//     var availableCenters = returnAvailableCenters(user.minimumAge, centers);
-//     if (availableCenters.length > 0) {
-//       notifications.sendSMS(user, availableCenters);
-//       notifications.sendWhatsappMessage(user, availableCenters);
-//     } else {
-//       console.log("Sorry for party Rocking");
-//     }
-//   });
-// }
-// setInterval(traceAvailableCapacityForUsers, 4000);
-
-// data
-// var dateOP = new Date().getDate();
-// var monthOP = new Date().getMonth() + 1;
-// var yearOP = new Date().getFullYear();
-// var dateFormatted = dateOP + "-" + monthOP + "-" + yearOP;
+}
+setInterval(traceAvailableCentersEvery10Minutes, 10 * 60000);
