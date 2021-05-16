@@ -21,28 +21,34 @@ app.post("/addUser", (req, res) => {
   });
   temporaryUser.save(function (err, doc) {
     if (err) {
-      return console.error(err);
+      console.log("Error while adding user to Database");
+      res.status(500).send("Error while adding user to Database");
+      console.error(err);
+    } else {
+      console.log("User added to Database successfully");
+      res.status(200).send("User added to Database successfully");
     }
-    console.log("User is added to Database successfully");
   });
 });
 app.post("/unsubscribeUser", (req, res) => {
-  dataUsers.findOne({ number: req.body.number }, (err, user) => {
-    // console.log(user);
-    notifications.sendEmailUnsubcribe(user).then(() => {
-      dataUsers.deleteMany({ number: req.body.number }, (err) => {
-        if (err) {
-          console.log(err);
-        } else {
-          console.log("Deleted the user successfully");
-        }
-      });
-    });
-  });
+  dataUsers.findOneAndDelete(
+    { number: req.body.number },
+    (err, unSubscribedUser) => {
+      if (unSubscribedUser == null) {
+        console.log("User doesn't exist in our Database");
+        res.status(500).send("User doesn't exist in our Database");
+      } else {
+        notifications.sendEmailUnsubcribe(unSubscribedUser).then(() => {
+          res
+            .status(200)
+            .send("Deleted user successfully and mail is sent as well");
+        });
+      }
+    }
+  );
 });
 app.listen(3000, () => {
   console.log("Started");
-  // OP();
 });
 
 function traceAvailableCentersEvery10Minutes() {
