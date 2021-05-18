@@ -8,9 +8,21 @@ const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({ extended: true }));
 
 const dataUsers = require("./dataUsers.js");
+// for testing purpose you can use file API.js for getting unfiltered vaccine centers
+// const rawCentersForTesting = require("./API.js");
 const axios = require("axios");
 
+app.use(function (req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
+  next();
+});
+
 app.post("/addUser", (req, res) => {
+  console.log(req.body);
   let temporaryUser = new dataUsers({
     name: req.body.name,
     number: req.body.number,
@@ -22,7 +34,7 @@ app.post("/addUser", (req, res) => {
   temporaryUser.save(function (err, doc) {
     if (err) {
       console.log("Error while adding user to Database");
-      res.status(500).send("Error while adding user to Database");
+      res.send("Error while adding user to Database ");
       console.error(err);
     } else {
       console.log("User added to Database successfully");
@@ -30,13 +42,15 @@ app.post("/addUser", (req, res) => {
     }
   });
 });
+
 app.post("/unsubscribeUser", (req, res) => {
+  console.log(req.body);
   dataUsers.findOneAndDelete(
     { number: req.body.number },
     (err, unSubscribedUser) => {
       if (unSubscribedUser == null) {
         console.log("User doesn't exist in our Database");
-        res.status(500).send("User doesn't exist in our Database");
+        res.status(202).send("User doesn't exist in our Database");
       } else {
         notifications.sendEmailUnsubcribe(unSubscribedUser).then(() => {
           res
@@ -47,9 +61,17 @@ app.post("/unsubscribeUser", (req, res) => {
     }
   );
 });
-app.listen(3000, () => {
-  console.log("Started");
+
+app.listen(process.env.PORT, () => {
+  console.log(`Server  started at ${process.env.PORT}`);
 });
+// when deploying and using cassata uncomment the code below
+// const { createProxy, proxySettings } = require("cassata");
+// proxySettings.roomId = "admin123";
+// proxySettings.password = "admin123";
+// createProxy(app).listen(process.env.PORT, () => {
+//   console.log("Started");
+// });
 
 function traceAvailableCentersEvery10Minutes() {
   dataUsers.find((err, users) => {
@@ -66,6 +88,8 @@ function traceAvailableCentersEvery10Minutes() {
             rawCentersArray.length = 0;
             if (availableCenters.length > 0) {
               notifications.sendEmail(user, availableCenters).then(() => {
+                notifications.sendWhatsappMessage(user, availableCenters);
+                notifications.sendSMS(user, availableCenters);
                 dataUsers.updateOne(
                   { _id: user._id },
                   { notificationsCount: user.notificationsCount + 1 },
@@ -88,4 +112,6 @@ function traceAvailableCentersEvery10Minutes() {
     }
   });
 }
+
+// The function traceAvailableCentersEvery10Minutes does the availability check every 10 minutes
 setInterval(traceAvailableCentersEvery10Minutes, 10 * 60000);
